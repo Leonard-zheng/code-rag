@@ -1,0 +1,36 @@
+Metadata-Version: 2.1
+Name: graph-code
+Version: 0.0.2
+Summary: Add your description here
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: loguru>=0.7.3
+Requires-Dist: pydantic-ai-slim[google,openai,vertexai]>=0.2.18
+Requires-Dist: pydantic-settings>=2.0.0
+Requires-Dist: pymgclient>=1.4.0
+Requires-Dist: python-dotenv>=1.1.0
+Requires-Dist: toml>=0.10.2
+Requires-Dist: tree-sitter-python>=0.23.6
+Requires-Dist: tree-sitter==0.25.0
+Requires-Dist: watchdog>=6.0.0
+Requires-Dist: typer>=0.12.5
+Requires-Dist: rich>=13.7.1
+Requires-Dist: prompt-toolkit>=3.0.0
+Requires-Dist: diff-match-patch>=20241021
+Requires-Dist: click>=8.0.0
+Provides-Extra: test
+Requires-Dist: pytest>=8.4.1; extra == "test"
+Requires-Dist: pytest-asyncio>=1.0.0; extra == "test"
+Provides-Extra: dev
+Requires-Dist: ruff>=0.5.5; extra == "dev"
+Requires-Dist: mypy>=1.11.0; extra == "dev"
+Requires-Dist: pre-commit>=4.2.0; extra == "dev"
+Provides-Extra: treesitter-full
+Requires-Dist: tree-sitter-python>=0.23.6; extra == "treesitter-full"
+Requires-Dist: tree-sitter-javascript>=0.23.1; extra == "treesitter-full"
+Requires-Dist: tree-sitter-typescript>=0.23.2; extra == "treesitter-full"
+Requires-Dist: tree-sitter-rust>=0.24.0; extra == "treesitter-full"
+Requires-Dist: tree-sitter-go>=0.23.4; extra == "treesitter-full"
+Requires-Dist: tree-sitter-scala>=0.24.0; extra == "treesitter-full"
+Requires-Dist: tree-sitter-java>=0.23.5; extra == "treesitter-full"
+Requires-Dist: tree-sitter-cpp>=0.23.0; extra == "treesitter-full"
