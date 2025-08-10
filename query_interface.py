@@ -24,14 +24,20 @@ except ImportError:
 
 from knowledge_engine.rrf_retriever import RRFRetriever, SearchResult
 from knowledge_engine.dual_indexer import DualEngineIndexer
+from knowledge_engine.answer_generator import AnswerGenerator
 
 
 class QueryInterface:
     """Command-line interface for querying the code knowledge base."""
     
-    def __init__(self, retriever: Optional[RRFRetriever] = None):
+    def __init__(
+        self,
+        retriever: Optional[RRFRetriever] = None,
+        answer_generator: Optional[AnswerGenerator] = None,
+    ):
         """Initialize query interface."""
         self.retriever = retriever
+        self.answer_generator = answer_generator
         
         # Initialize console for rich output
         if Console:
@@ -162,6 +168,16 @@ Features:
                 results = self.retriever.search(query, limit=limit)
             
             self.format_search_results(results, query)
+
+            # If an answer generator is available, produce a final answer using
+            # the retrieved context and display it below the raw search results.
+            if self.answer_generator:
+                answer = self.answer_generator.generate_answer(query, results)
+                if self.console:
+                    self.console.print(Panel(answer, title="AI Answer", border_style="magenta"))
+                else:
+                    print("\nAI Answer:\n" + answer)
+
             return True
             
         except Exception as e:
@@ -386,9 +402,12 @@ def main():
     # Load retriever
     logger.info("Loading search system...")
     retriever = load_retriever(args.weaviate_url, openai_api_key) if openai_api_key else None
-    
+
+    # Create answer generator if API key is available
+    answer_generator = AnswerGenerator(openai_api_key) if openai_api_key else None
+
     # Create interface
-    interface = QueryInterface(retriever)
+    interface = QueryInterface(retriever, answer_generator)
     
     # Handle different modes
     if args.status:

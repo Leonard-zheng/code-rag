@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from loguru import logger
 
 from .dual_indexer import DualEngineIndexer
+from .cross_encoder_reranker import CrossEncoderReranker
 
 
 @dataclass
@@ -130,6 +131,14 @@ class RRFRetriever:
         self.rrf_k = rrf_k
         self.default_limit = default_limit
         self.query_analyzer = QueryAnalyzer()
+
+        # Optional cross-encoder reranker.  If the underlying model isn't
+        # available the reranker becomes a no-op.
+        try:
+            self.reranker = CrossEncoderReranker()
+        except Exception as exc:  # pragma: no cover - handled gracefully
+            logger.warning(f"Cross-encoder reranker disabled: {exc}")
+            self.reranker = None
     
     def reciprocal_rank_fusion(
         self,
@@ -277,8 +286,12 @@ class RRFRetriever:
             
             search_results.append(result)
         
+        # Optional cross-encoder re-ranking for higher precision
+        if hasattr(self, "reranker") and self.reranker:
+            search_results = self.reranker.rerank(query, search_results)
+
         logger.info(f"Returned {len(search_results)} fused results")
-        
+
         return search_results
     
     def search_similar_functions(
