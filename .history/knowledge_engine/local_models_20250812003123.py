@@ -17,7 +17,6 @@ try:
     from langchain_core.output_parsers import JsonOutputParser
     from langchain_core.documents import Document
     from langchain_core.runnables import RunnablePassthrough
-    from langchain_core.messages import HumanMessage
 except ImportError:
     raise
 
@@ -49,34 +48,21 @@ class LocalEmbeddingModel:
             raise
     
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed a list of documents using encode_document for IR tasks."""
+        """Embed a list of documents."""
         if not self.model:
             raise RuntimeError("Model not initialized")
             
         logger.debug(f"Embedding {len(texts)} documents...")
-        # Use encode_document for information retrieval tasks as recommended in v5
-        try:
-            embeddings = self.model.encode_document(texts, normalize_embeddings=True)
-        except AttributeError:
-            # Fallback to encode if encode_document is not available
-            logger.debug("encode_document not available, falling back to encode")
-            embeddings = self.model.encode(texts, normalize_embeddings=True)
+        embeddings = self.model.encode_document(texts, normalize_embeddings=True)
         return embeddings.tolist()
     
     def embed_query(self, text: str) -> List[float]:
-        """Embed a single query using encode_query for IR tasks."""
+        """Embed a single query."""
         if not self.model:
             raise RuntimeError("Model not initialized")
             
-        # Use encode_query for information retrieval tasks as recommended in v5
-        try:
-            embedding = self.model.encode_query(text, normalize_embeddings=True)
-            return embedding.tolist()
-        except AttributeError:
-            # Fallback to encode if encode_query is not available
-            logger.debug("encode_query not available, falling back to encode")
-            embedding = self.model.encode([text], normalize_embeddings=True)
-            return embedding[0].tolist()
+        embedding = self.model.encode_query([text], normalize_embeddings=True)
+        return embedding[0].tolist()
 
 
 class LocalLLMModel:
@@ -121,13 +107,13 @@ class LocalLLMModel:
             raise
     
     def generate(self, prompt: str) -> str:
-        """Generate text using the local Chat LLM."""
+        """Generate text using the local LLM."""
         if not self.llm:
             raise RuntimeError("LLM not initialized")    
         try:
-            message = HumanMessage(content=prompt)
-            response = self.llm.invoke([message])
-            return response.content.strip()
+            msg = self.llm.invoke(prompt)
+            text = getattr(msg, "content", str(msg))
+            return text.strip()
         except Exception as e:
             logger.error(f"LLM generation failed: {e}")
             raise
@@ -157,27 +143,12 @@ class LangchainSummaryChain:
     def _setup_chains(self):
         """Setup the Langchain summary chains using new LCEL syntax."""
         # Function summary prompt template
-        self.summary_prompt = ChatPromptTemplate.from_messages([
-            ("system", """你是一个专业的代码分析专家。你的任务是分析函数代码并生成结构化的JSON摘要。
-
-你需要严格按照以下JSON格式输出，不要添加任何额外的解释、标记或文本：
-{{
-  "summary": "1-2句话简述函数功能",
-  "purpose": "详细说明函数的目的和作用", 
-  "parameters": [
-    {{"name": "参数名", "type": "类型", "description": "参数作用"}}
-  ],
-  "returns": "返回值描述",
-  "dependencies": ["依赖的内部函数列表"],
-  "complexity": "LOW|MEDIUM|HIGH"
-}}
-
-分析要求：
-1. 使用中文描述
-2. 重点关注函数的业务逻辑，而非实现细节  
-3. 只列出项目内部函数依赖，不包括库函数
-4. 复杂度基于逻辑复杂性和代码行数判断"""),
-            ("human", """请分析以下函数并提供结构化的JSON摘要：
+        self.summary_prompt = PromptTemplate(
+            input_variables=[
+                "function_name", "qualified_name", "source_code", 
+                "docstring", "dependencies_context"
+            ],
+            template="""你是一个代码分析专家。请分析以下函数并提供结构化的摘要。
 
 函数信息：
 - 名称: {function_name}
@@ -192,14 +163,39 @@ class LangchainSummaryChain:
 依赖上下文：
 {dependencies_context}
 
-请直接返回JSON，不要添加任何其他内容：""")
-        ])
+请提供以下格式的JSON响应：
+{{
+  "summary": "1-2句话简述函数功能",
+  "purpose": "详细说明函数的目的和作用", 
+  "parameters": [
+    {{"name": "参数名", "type": "类型", "description": "参数作用"}}
+  ],
+  "returns": "返回值描述",
+  "dependencies": ["依赖的内部函数列表"],
+  "complexity": "LOW|MEDIUM|HIGH"
+}}
+
+注意：
+1. 使用中文描述
+2. 重点关注函数的业务逻辑，而非实现细节
+3. 只列出项目内部函数依赖，不包括库函数
+4. 复杂度基于逻辑复杂性和代码行数判断
+
+JSON响应："""
+        )
         
         # Batch summary prompt for multiple functions
-        self.batch_summary_prompt = ChatPromptTemplate.from_messages([
-            ("system", """你是一个专业的代码分析专家。你需要分析多个函数并为每个函数生成结构化的JSON摘要。
+        self.batch_summary_prompt = PromptTemplate(
+            input_variables=["functions_data", "context_library"],
+            template="""你是一个代码分析专家。请分析以下多个函数并为每个函数提供结构化的摘要。
 
-你需要严格按照以下JSON数组格式输出，不要添加任何额外的解释、标记或文本：
+上下文库（依赖函数的摘要）：
+{context_library}
+
+待分析的函数：
+{functions_data}
+
+请为每个函数提供JSON格式的分析，返回一个JSON数组：
 [
   {{
     "qualified_name": "函数完整路径",
@@ -212,26 +208,18 @@ class LangchainSummaryChain:
   }}
 ]
 
-分析要求：
+要求：
 1. 使用中文描述
 2. 基于上下文库理解函数依赖关系
-3. 只列出项目内部函数依赖，不包括库函数
-4. 按提供的函数顺序返回结果"""),
-            ("human", """请分析以下多个函数并为每个函数提供结构化的JSON摘要：
+3. 只列出项目内部函数依赖
+4. 按提供的函数顺序返回结果
 
-上下文库（依赖函数的摘要）：
-{context_library}
-
-待分析的函数：
-{functions_data}
-
-请直接返回JSON数组，不要添加任何其他内容：""")
-        ])
+JSON数组："""
+        )
         
-        # Create chains using LCEL syntax with JSON parsing
-        self.json_parser = JsonOutputParser()
-        self.summary_chain = self.summary_prompt | self.llm.llm | self.json_parser
-        self.batch_summary_chain = self.batch_summary_prompt | self.llm.llm | self.json_parser
+        # Create chains using LCEL syntax
+        self.summary_chain = self.summary_prompt | self.llm.llm | StrOutputParser()
+        self.batch_summary_chain = self.batch_summary_prompt | self.llm.llm | StrOutputParser()
     
     def generate_single_summary(
         self, 
@@ -240,7 +228,7 @@ class LangchainSummaryChain:
         source_code: str,
         docstring: str = "",
         dependencies_context: str = ""
-    ) -> Dict[str, Any]:
+    ) -> str:
         """Generate summary for a single function."""
         try:
             result = self.summary_chain.invoke({
@@ -260,7 +248,7 @@ class LangchainSummaryChain:
         self,
         functions_data: str,
         context_library: str
-    ) -> List[Dict[str, Any]]:
+    ) -> str:
         """Generate summaries for multiple functions."""
         try:
             result = self.batch_summary_chain.invoke({

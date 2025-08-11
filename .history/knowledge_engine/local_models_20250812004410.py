@@ -5,7 +5,7 @@ Integrates BGE-M3 embeddings and Ollama LLM for local processing without API key
 """
 
 import os
-os.environ["NO_PROXY"] = "localhost,127.0.0.1,::1"
+
 import json
 from typing import List, Dict, Any, Optional
 from pathlib import Path

@@ -138,16 +138,16 @@ python main.py
 ### System Requirements
 
 #### 本地版本 (推荐)
-- **Python 3.8+** with packages (see `requirements-local.txt`)
+- **Python 3.12+** with packages (see `requirements-local.txt`)
 - **Memgraph Database**: Graph database for AST relationships (port 7687)
 - **Weaviate Database**: Vector database for semantic search (port 8080)
 - **Ollama**: 本地 LLM 服务 (port 11434)
   - 安装: https://ollama.ai/
-  - 模型: `ollama pull gpt-oss-20b` (或 llama2, codellama)
+  - 模型: `ollama pull llama3.1:8b` (或gemma2:9b)
 - **BGE-M3**: 自动下载的中文优化嵌入模型
 
 #### OpenAI 版本
-- **Python 3.8+** with packages (see `requirements.txt`)
+- **Python 3.12+** with packages (see `requirements.txt`)
 - **Memgraph Database**: Graph database for AST relationships (port 7687)
 - **Weaviate Database**: Vector database for semantic search (port 8080)
 - **OpenAI API Key**: For LLM summaries and embeddings (set `OPENAI_API_KEY`)
@@ -261,3 +261,9 @@ MVP implementation focuses on core functionality. Recommended additions:
 - Integration tests for end-to-end pipeline
 - Search relevance evaluation metrics
 - Performance benchmarking for large codebases
+
+## 库用法校验规则（API 使用前必须执行）
+- 在使用任何第三方库/框架前，先执行“版本与文档确认”：
+  1) 确认目标库的**主版本号**；若用户未指定，则选用**最新稳定版本**并在输出中标记版本号。
+  2) 通过 WebSearch/WebFetch 查找该版本的**官方文档/迁移指南/发布日志**，识别是否有弃用/破坏式变更。
+  3) 仅采用**官方推荐**的写法；若我最初的方案与推荐不一致，必须改为推荐写法并解释原因。

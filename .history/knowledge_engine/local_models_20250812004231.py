@@ -5,7 +5,6 @@ Integrates BGE-M3 embeddings and Ollama LLM for local processing without API key
 """
 
 import os
-os.environ["NO_PROXY"] = "localhost,127.0.0.1,::1"
 import json
 from typing import List, Dict, Any, Optional
 from pathlib import Path
@@ -13,8 +12,8 @@ from loguru import logger
 
 try:
     from langchain_ollama import ChatOllama
-    from langchain_core.prompts import ChatPromptTemplate
-    from langchain_core.output_parsers import JsonOutputParser
+    from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+    from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
     from langchain_core.documents import Document
     from langchain_core.runnables import RunnablePassthrough
     from langchain_core.messages import HumanMessage
@@ -228,10 +227,9 @@ class LangchainSummaryChain:
 请直接返回JSON数组，不要添加任何其他内容：""")
         ])
         
-        # Create chains using LCEL syntax with JSON parsing
-        self.json_parser = JsonOutputParser()
-        self.summary_chain = self.summary_prompt | self.llm.llm | self.json_parser
-        self.batch_summary_chain = self.batch_summary_prompt | self.llm.llm | self.json_parser
+        # Create chains using LCEL syntax
+        self.summary_chain = self.summary_prompt | self.llm.llm | StrOutputParser()
+        self.batch_summary_chain = self.batch_summary_prompt | self.llm.llm | StrOutputParser()
     
     def generate_single_summary(
         self, 
@@ -239,8 +237,9 @@ class LangchainSummaryChain:
         qualified_name: str,
         source_code: str,
         docstring: str = "",
+        
         dependencies_context: str = ""
-    ) -> Dict[str, Any]:
+    ) -> str:
         """Generate summary for a single function."""
         try:
             result = self.summary_chain.invoke({
@@ -260,7 +259,7 @@ class LangchainSummaryChain:
         self,
         functions_data: str,
         context_library: str
-    ) -> List[Dict[str, Any]]:
+    ) -> str:
         """Generate summaries for multiple functions."""
         try:
             result = self.batch_summary_chain.invoke({

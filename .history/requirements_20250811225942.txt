@@ -13,7 +13,7 @@ pydantic-ai-slim[google,openai,vertexai]>=0.2.18
 
 # LangChain core
 langchain==0.3.27
-langchain-community==0.3.27 
+langchain-community==0.3.27
 langchain-ollama==0.3.6
 langchain-google-genai
 google-generativeai
