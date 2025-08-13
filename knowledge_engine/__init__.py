@@ -9,6 +9,7 @@ Supports both OpenAI and local model versions.
 
 from .dependency_graph import DependencyGraphBuilder
 from .rrf_retriever import RRFRetriever
+from .answer_generator import AnswerGenerator
 
 # OpenAI version
 from .topological_summary import TopologicalSummaryGenerator
@@ -27,6 +28,7 @@ __all__ = [
     # Core components (both versions)
     "DependencyGraphBuilder",
     "RRFRetriever",
+    "AnswerGenerator",
     
     # OpenAI version
     "TopologicalSummaryGenerator", 
@@ -37,7 +39,7 @@ __all__ = [
 if LOCAL_MODELS_AVAILABLE:
     __all__.extend([
         "LocalEmbeddingModel",
-        "LocalLLMModel", 
+        "LocalLLMModel",
         "LangchainSummaryChain",
         "LocalTopologicalSummaryGenerator",
         "LocalDualEngineIndexer",
